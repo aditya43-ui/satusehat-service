@@ -1,0 +1,350 @@
+# 📚 Manual Penggunaan Lengkap Pustaka Query Builder
+
+Dokumen ini merupakan panduan komprehensif untuk menggunakan pustaka `Query Builder` (berada di `pkg/utils/query`). Pustaka ini dirancang sebagai abstraksi query dinamis yang aman dari *SQL Injection*, mendukung berbagai dialek SQL (PostgreSQL, MySQL, SQL Server, SQLite), MongoDB, serta kompatibel penuh dengan operasi transaksi.
+
+---
+
+## 📋 Daftar Isi
+1. Inisialisasi & Konfigurasi
+2. Fungsi Helper (Membuat Query Cepat)
+3. Penggunaan Sederhana (CRUD Dasar SQL)
+4. Penggunaan Lanjutan (Advanced SQL)
+5. Transaksi (Transactions)
+6. Dukungan MongoDB
+7. Query Parser (API URL Parameter)
+8. Daftar Operator Filter
+
+---
+
+## 1. Inisialisasi & Konfigurasi
+
+Pustaka ini menyediakan beberapa cara untuk inisialisasi, baik menggunakan *Builder* langsung maupun melalui *Query Manager* yang mengumpulkan fungsi SQL, MongoDB, dan Parser di satu tempat.
+
+```go
+import "your_project/pkg/utils/query"
+
+// A. Menggunakan Manager (Direkomendasikan)
+qm := query.NewQueryManager(query.DBTypePostgreSQL)
+sqlBuilder := qm.GetSQLBuilder()
+mongoBuilder := qm.GetMongoBuilder()
+parser := qm.GetQueryParser()
+
+// B. Menggunakan Instansiasi Spesifik Dialek
+pgBuilder := query.ForPostgreSQL()
+mysqlBuilder := query.ForMySQL()
+mongoBuilder := query.ForMongoDB()
+
+// C. Menggunakan Konfigurasi Keamanan (Sangat Disarankan)
+sqlBuilder.
+    SetSecurityOptions(true, 1000).          // Enable security & set max rows
+    SetAllowedTables([]string{"users"}).     // Whitelist tabel
+    SetAllowedColumns([]string{"id", "name"}).// Whitelist kolom
+    SetQueryLogging(true).                   // Aktifkan log query
+    SetQueryTimeout(30 * time.Second)        // Timeout query
+```
+
+---
+
+## 2. Penggunaan Sederhana (CRUD Dasar)
+
+*Query Builder* menggunakan tipe `sqlx.ExtContext` untuk eksekutornya, yang berarti Anda dapat melemparkan `*sqlx.DB` (koneksi normal) maupun `*sqlx.Tx` (transaksi) ke dalamnya.
+
+### A. SELECT (Mengambil Data)
+
+```go
+var users []User
+
+// Definisi struktur query
+q := query.DynamicQuery{
+    From: "users",
+    Fields: []query.SelectField{
+        {Expression: "id"},
+        {Expression: "name"},
+    },
+    Filters: []query.FilterGroup{{
+        LogicOp: "AND",
+        Filters: []query.DynamicFilter{
+            query.CreateEqualFilter("status", "active"),
+            query.CreateFilter("age", query.OpGreaterThan, 18),
+        },
+    }},
+    Sort: []query.SortField{
+        query.CreateDescSort("created_at"),
+    },
+    Limit: 10,
+    Offset: 0,
+}
+
+// Eksekusi query (db adalah *sqlx.DB)
+err := sqlBuilder.ExecuteQuery(ctx, db, q, &users)
+```
+
+### B. INSERT (Menambah Data)
+
+```go
+insertData := query.InsertData{
+    Columns: []string{"name", "email", "status"},
+    Values:  []interface{}{"John Doe", "john@example.com", "active"},
+}
+
+// Eksekusi Insert (mengembalikan sql.Result)
+// Opsional: tambahkan kolom di akhir parameter untuk klausa RETURNING (hanya di Postgres)
+result, err := sqlBuilder.ExecuteInsert(ctx, db, "users", insertData, "id")
+```
+
+### C. UPDATE (Mengubah Data)
+
+```go
+updateData := query.UpdateData{
+    Columns: []string{"status"},
+    Values:  []interface{}{"inactive"},
+}
+
+filters := []query.FilterGroup{{
+    Filters: []query.DynamicFilter{
+        query.CreateEqualFilter("id", 1),
+    },
+}}
+
+result, err := sqlBuilder.ExecuteUpdate(ctx, db, "users", updateData, filters)
+```
+
+### D. DELETE (Menghapus Data)
+
+```go
+filters := []query.FilterGroup{{
+    Filters: []query.DynamicFilter{
+        query.CreateEqualFilter("id", 1),
+    },
+}}
+
+result, err := sqlBuilder.ExecuteDelete(ctx, db, "users", filters)
+```
+
+### E. COUNT (Menghitung Jumlah Baris)
+
+```go
+q := query.DynamicQuery{
+    From: "users",
+    Filters: []query.FilterGroup{{
+        Filters: []query.DynamicFilter{
+            query.CreateEqualFilter("status", "active"),
+        },
+    }},
+}
+
+count, err := sqlBuilder.ExecuteCount(ctx, db, q)
+```
+
+---
+
+## 3. Penggunaan Bertingkat / Lanjutan
+
+### A. JOIN Tables
+
+Mendukung relasi tabel (Inner, Left, Right, Full, dan Lateral Joins).
+
+```go
+q := query.DynamicQuery{
+    From: "orders",
+    Aliases: "o",
+    Fields: []query.SelectField{
+        {Expression: "o.id"},
+        {Expression: "u.name", Alias: "customer_name"},
+    },
+    Joins: []query.Join{
+        {
+            Type:  "LEFT",
+            Table: "users",
+            Alias: "u",
+            OnConditions: query.FilterGroup{
+                Filters: []query.DynamicFilter{
+                    // Bandingkan kolom dengan kolom lainnya (tanpa di-treat sebagai string biasa)
+                    {Column: "o.user_id", Operator: query.OpEqual, Value: "u.id"},
+                },
+            },
+        },
+    },
+}
+```
+
+### B. Common Table Expressions (CTE) / Klausa WITH
+
+Berguna untuk membuat sub-query *temporary* yang dapat digunakan dalam query utama.
+
+```go
+q := query.DynamicQuery{
+    CTEs: []query.CTE{
+        {
+            Name: "active_users",
+            Query: query.DynamicQuery{
+                From: "users",
+                Filters: []query.FilterGroup{{
+                    Filters: []query.DynamicFilter{query.CreateEqualFilter("status", "active")},
+                }},
+            },
+        },
+    },
+    From: "active_users", // Query utama select dari CTE di atas
+}
+```
+
+### C. Window Functions
+
+Mendukung eksekusi fungsi analitik (cth: `ROW_NUMBER()`, `RANK()`).
+
+```go
+q := query.DynamicQuery{
+    From: "sales",
+    Fields: []query.SelectField{
+        {Expression: "employee_id"},
+        {Expression: "amount"},
+    },
+    WindowFunctions: []query.WindowFunction{
+        {
+            Function: "RANK",
+            Over:     "PARTITION BY department_id",
+            OrderBy:  "amount DESC",
+            Alias:    "sales_rank",
+        },
+    },
+}
+```
+
+### D. Operasi JSON
+
+Mendukung *query* untuk kolom tipe JSON/JSONB pada tabel relasional.
+
+```go
+// Mencari dari data JSON
+q := query.DynamicQuery{
+    From: "products",
+    Filters: []query.FilterGroup{{
+        Filters: []query.DynamicFilter{
+            {
+                Column: "attributes", 
+                Operator: query.OpJsonEqual, 
+                Value: "red", 
+                Options: map[string]interface{}{"path": "color"}, // Akan di-parse: attributes->'color' = 'red'
+            },
+        },
+    }},
+}
+```
+
+---
+
+## 4. Penggunaan dengan Transaksi (Transaction)
+
+`QueryBuilder` telah dirancang untuk mendukung *Transactions* secara mulus. Semua metode eksekusi (seperti `ExecuteInsert`, `ExecuteUpdate`, `ExecuteQuery`) menerima tipe parameter antarmuka `sqlx.ExtContext`. 
+
+Oleh karena itu, Anda cukup memberikan variabel `*sqlx.Tx` menggantikan `*sqlx.DB`!
+
+**Contoh Transaksi Lengkap:**
+
+```go
+func CreateUserWithProfile(ctx context.Context, db *sqlx.DB, sqlBuilder query.QueryBuilder) error {
+    // 1. Mulai Transaksi
+    tx, err := db.BeginTxx(ctx, nil)
+    if err != nil {
+        return err
+    }
+    
+    // Buat fungsi defer untuk auto-rollback jika terjadi panic / error tanpa komit
+    defer func() {
+        if p := recover(); p != nil {
+            tx.Rollback()
+            panic(p) 
+        } else if err != nil {
+            tx.Rollback() 
+        }
+    }()
+
+    // 2. Operasi PERTAMA dalam transaksi (Insert User)
+    userData := query.InsertData{
+        Columns: []string{"name", "email"},
+        Values:  []interface{}{"Jane Doe", "jane@example.com"},
+    }
+    
+    // PERHATIKAN: Kita melemparkan "tx", bukan "db"
+    // Kita menggunakan klausa returning "id" untuk mendapatkan ID user yang baru
+    res, err := sqlBuilder.ExecuteInsert(ctx, tx, "users", userData, "id")
+    if err != nil {
+        return err // Akan trigger tx.Rollback() melalui defer
+    }
+
+    // (Jika pakai PostgreSQL, ambil ID melalui interface driver, atau pakai ExecuteQueryRow)
+    var newUserID int64 = 1 // Simulasi ID yang didapat
+
+    // 3. Operasi KEDUA dalam transaksi (Insert Profile)
+    profileData := query.InsertData{
+        Columns: []string{"user_id", "bio"},
+        Values:  []interface{}{newUserID, "Hello I am Jane"},
+    }
+    
+    _, err = sqlBuilder.ExecuteInsert(ctx, tx, "profiles", profileData)
+    if err != nil {
+        return err // Akan trigger tx.Rollback() melalui defer
+    }
+
+    // 4. Komit Transaksi Jika Semua Berhasil
+    err = tx.Commit()
+    return err
+}
+```
+
+---
+
+## 5. Dukungan MongoDB
+
+Selain SQL, *Query Builder* juga menyediakan antarmuka khusus untuk MongoDB melalui `MongoQueryBuilder`. Objek `DynamicQuery` yang sama bisa digunakan untuk mem-parsing sintaks MongoDB (sehingga cocok dengan arsitektur multi-database).
+
+```go
+// Inisialisasi
+mongoQb := query.CreateMongoQueryBuilder()
+
+// Objek Dynamic Query (Sama seperti SQL)
+q := query.DynamicQuery{
+    Filters: []query.FilterGroup{{
+        Filters: []query.DynamicFilter{
+            query.CreateEqualFilter("status", "active"),
+        },
+    }},
+    Limit: 10,
+}
+
+// Eksekusi Find
+var results []bson.M
+// Parameter kedua adalah objek *mongo.Collection
+err := mongoQb.ExecuteFind(ctx, myMongoCollection, q, &results)
+```
+
+Mendukung operasi MongoDB lain seperti `ExecuteCount`, `ExecuteInsert`, `ExecuteUpdate`, `ExecuteDelete`, dan `ExecuteAggregate`.
+
+---
+
+## 6. Parser URL (Mengubah Parameter API menjadi Query)
+
+Sangat bermanfaat untuk skenario REST API di mana _client_ memberikan filter, sort, dan paginasi melalui *query string* (misal: `?limit=10&sort=-created_at&filter[status][_eq]=active`).
+
+```go
+func GetUsersHandler(c *gin.Context) {
+    // Ambil parameter querystring dari request URL
+    urlParams := c.Request.URL.Query()
+
+    // Inisialisasi Parser
+    parser := query.CreateQueryParser().SetLimits(10, 100)
+    
+    // Konversi URL Parameters menjadi objek DynamicQuery
+    dynamicQuery, err := parser.ParseQuery(urlParams, "users")
+    if err != nil {
+        // Handle error (bad request)
+    }
+
+    // Eksekusi query dengan SQL Builder
+    var users []User
+    sqlBuilder.ExecuteQuery(ctx, db, dynamicQuery, &users)
+    
+    // Return response...
+}
+```

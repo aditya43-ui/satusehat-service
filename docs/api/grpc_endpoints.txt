@@ -1,0 +1,36 @@
+# gRPC API Endpoints - Person Service
+# Generated on: $(date)
+# Handler: internal/infrastructure/transport/grpc/handlers/person_handler.go
+
+## Service: PersonService
+
+### 1. GetPerson
+- **Method**: GetPerson
+- **Request**: GetPersonRequest { id: int64 }
+- **Response**: GetPersonResponse { person: Person }
+- **Handler**: PersonHandler.GetPerson()
+
+### 2. ListPersons
+- **Method**: ListPersons
+- **Request**: ListPersonsRequest { page: int32, page_size: int32 }
+- **Response**: ListPersonsResponse { persons: []Person, total: int64 }
+- **Handler**: PersonHandler.ListPersons()
+
+### 3. CreatePerson
+- **Method**: CreatePerson
+- **Request**: CreatePersonRequest { data: CreatePersonRequest }
+- **Response**: GetPersonResponse { person: Person }
+- **Handler**: PersonHandler.CreatePerson()
+
+### 4. UpdatePerson
+- **Method**: UpdatePerson
+- **Request**: UpdatePersonRequest { id: int64, data: CreatePersonRequest }
+- **Response**: GetPersonResponse { person: Person }
+- **Handler**: PersonHandler.UpdatePerson()
+
+### 5. DeletePerson
+- **Method**: DeletePerson
+- **Request**: DeletePersonRequest { id: int64 }
+- **Response**: Empty {}
+- **Handler**: PersonHandler.DeletePerson()
+

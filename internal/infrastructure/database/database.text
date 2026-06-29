@@ -1,0 +1,227 @@
+// internal/infrastructure/database/database.go
+package database
+
+import (
+    "context"
+    "crypto/tls"
+    "database/sql"
+    "fmt"
+    "log"
+    "os"
+    "path/filepath"
+    "runtime"
+    "sort"
+    "strconv"
+    "strings"
+    "sync"
+    "time"
+
+    "service-general/internal/infrastructure/config"
+    "service-general/pkg/logger" // Import logger Anda
+
+    "github.com/jackc/pgx/v5"
+    "github.com/jackc/pgx/v5/stdlib"
+    "github.com/jmoiron/sqlx"
+    "github.com/lib/pq" // PASTIKAN IMPORT INI ADA
+
+    // Driver GORM di-import secara eksplisit untuk Migration
+    "gorm.io/driver/mysql"
+    "gorm.io/driver/postgres"
+    "gorm.io/driver/sqlite"
+    "gorm.io/driver/sqlserver"
+    "gorm.io/gorm"
+    "gorm.io/gorm/logger" // Import logger dari GORM
+
+    "go.mongodb.org/mongo-driver/mongo"
+    "go.mongodb.org/mongo-driver/mongo/options"
+)
+
+// ... (tipe DatabaseType dan interface Service tetap sama)
+
+type service struct {
+    // GORM DB adalah sumber utama
+    gormDatabases map[string]*gorm.DB
+    // Map untuk menyimpan koneksi mentah yang diekstrak dari GORM
+    sqlDatabases  map[string]*sql.DB
+    sqlxDatabases map[string]*sqlx.DB
+    mongoClients  map[string]*mongo.Client
+    readReplicas  map[string][]*sql.DB
+    configs       map[string]config.DatabaseConfig
+    readConfigs   map[string][]config.DatabaseConfig
+    mu            sync.RWMutex
+    readBalancer  map[string]int
+    // PERBAIKAN 1: Kembali ke tipe yang benar untuk listener PostgreSQL
+    listeners   map[string]*pq.Listener
+    listenersMu sync.RWMutex
+}
+
+var (
+    dbManager *service
+    once      sync.Once
+)
+
+// ... (fungsi New dan loadFromConfig tetap sama)
+
+// --- PERBAIKAN 2: Buat Adapter untuk Logger GORM ---
+
+// gormLoggerAdapter adalah adapter untuk menghubungkan logger kita dengan GORM
+type gormLoggerAdapter struct {
+    logger logger.Logger
+}
+
+// NewGormLoggerAdapter membuat instance baru dari adapter
+func NewGormLoggerAdapter(l logger.Logger) logger.Interface {
+    // Tentukan level log GORM berdasarkan level logger kita
+    // Ini adalah implementasi sederhana, Anda bisa membuatnya lebih dinamis
+    logLevel := logger.Silent
+    if l != nil {
+        // Anda bisa menambahkan logika untuk menentukan level dari logger Anda
+        // Untuk sekarang, kita hardcode ke Info
+        logLevel = logger.Info
+    }
+
+    return &gormLoggerAdapter{
+        logger: l,
+        // Konfigurasi logger GORM
+        Config: logger.Config{
+            SlowThreshold:             200 * time.Millisecond,
+            LogLevel:                  logLevel,
+            IgnoreRecordNotFoundError: false,
+            Colorful:                  false,
+        },
+    }
+}
+
+// LogMode menetapkan level log
+func (l *gormLoggerAdapter) LogMode(level logger.LogLevel) logger.Interface {
+    newLogger := *l
+    newLogger.Config.LogLevel = level
+    return &newLogger
+}
+
+// Info mencatat log info
+func (l *gormLoggerAdapter) Info(ctx context.Context, msg string, data ...interface{}) {
+    l.logger.WithContext(ctx).Info(fmt.Sprintf(msg, data...))
+}
+
+// Warn mencatat log warning
+func (l *gormLoggerAdapter) Warn(ctx context.Context, msg string, data ...interface{}) {
+    l.logger.WithContext(ctx).Warn(fmt.Sprintf(msg, data...))
+}
+
+// Error mencatat log error
+func (l *gormLoggerAdapter) Error(ctx context.Context, msg string, data ...interface{}) {
+    l.logger.WithContext(ctx).Error(fmt.Sprintf(msg, data...))
+}
+
+// Trace mencatat log trace (SQL query)
+func (l *gormLoggerAdapter) Trace(ctx context.Context, begin time.Time, fc func() (sql string, rowsAffected int64), err error) {
+    elapsed := time.Since(begin)
+    sql, rows := fc()
+
+    fields := map[string]interface{}{
+        "duration":  elapsed,
+        "rows":      rows,
+        "sql":       sql,
+        "error":     err,
+        "function":  "database.trace",
+    }
+
+    switch {
+    case err != nil && l.Config.LogLevel >= logger.Error:
+        l.logger.WithContext(ctx).WithFields(logger.Any("error", err)).Error("Database error", logger.Any("details", fields))
+    case elapsed > l.Config.SlowThreshold && l.Config.LogLevel >= logger.Warn:
+        l.logger.WithContext(ctx).Warn("Slow database query", logger.Any("details", fields))
+    case l.Config.LogLevel == logger.Info:
+        l.logger.WithContext(ctx).Debug("Database query", logger.Any("details", fields))
+    }
+}
+
+// --- Metode Koneksi GORM (diperbaiki untuk menggunakan adapter) ---
+
+func (s *service) openPostgresGORM(config config.DatabaseConfig) (*gorm.DB, error) {
+    dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=Asia/Jakarta",
+        config.Host, config.Username, config.Password, config.Database, config.Port, config.SSLMode)
+
+    if config.Schema != "" {
+        dsn += fmt.Sprintf(" search_path=%s", config.Schema)
+    }
+
+    // PERBAIKAN: Gunakan adapter logger kita
+    gormConfig := &gorm.Config{
+        Logger: NewGormLoggerAdapter(logger.Default()),
+    }
+
+    if config.RequireSSL {
+        // ... (konfigurasi SSL tetap sama)
+    }
+
+    return gorm.Open(postgres.Open(dsn), gormConfig)
+}
+
+func (s *service) openMySQLGORM(config config.DatabaseConfig) (*gorm.DB, error) {
+    dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+        config.Username, config.Password, config.Host, config.Port, config.Database)
+
+    if config.RequireSSL {
+        dsn += "&tls=true"
+    }
+
+    // PERBAIKAN: Gunakan adapter logger kita
+    gormConfig := &gorm.Config{
+        Logger: NewGormLoggerAdapter(logger.Default()),
+    }
+
+    return gorm.Open(mysql.Open(dsn), gormConfig)
+}
+
+func (s *service) openSQLServerGORM(config config.DatabaseConfig) (*gorm.DB, error) {
+    dsn := fmt.Sprintf("sqlserver://%s:%s@%s:%d?database=%s",
+        config.Username, config.Password, config.Host, config.Port, config.Database)
+
+    if config.RequireSSL {
+        // ... (konfigurasi SSL tetap sama)
+    }
+
+    // PERBAIKAN: Gunakan adapter logger kita
+    gormConfig := &gorm.Config{
+        Logger: NewGormLoggerAdapter(logger.Default()),
+    }
+
+    return gorm.Open(sqlserver.Open(dsn), gormConfig)
+}
+
+func (s *service) openSQLiteGORM(config config.DatabaseConfig) (*gorm.DB, error) {
+    // PERBAIKAN: Gunakan adapter logger kita
+    gormConfig := &gorm.Config{
+        Logger: NewGormLoggerAdapter(logger.Default()),
+    }
+
+    return gorm.Open(sqlite.Open(config.Path), gormConfig)
+}
+
+// --- Metode Lainnya ---
+
+// ... (semua metode lain seperti GetGormDB, GetDB, Migrate, Health, Close, dll. tidak perlu diubah)
+// ... (kecuali mungkin bagian Close yang membersihkan listeners)
+
+// Di fungsi Close, pastikan tipe listener sudah benar
+func (s *service) Close() error {
+    s.mu.Lock()
+    defer s.mu.Unlock()
+
+    var errs []error
+
+    for name, listener := range s.listeners {
+        if err := listener.Close(); err != nil {
+            errs = append(errs, fmt.Errorf("failed to close listener for %s: %w", name, err))
+        }
+    }
+    // ... (sisa kode Close)
+}
+
+// Di fungsi ListenForChanges, pastikan Anda menggunakan pq.NewListener
+func (s *service) ListenForChanges(ctx context.Context, dbName string, channels []string, callback func(string, string)) error {
+    // ... (kode Anda sudah benar menggunakan pq.NewListener)
+    // ...
+}

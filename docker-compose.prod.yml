@@ -1,0 +1,39 @@
+version: "3.8"
+
+# Network akan dibuat otomatis dengan nama 'service-general_default'
+# atau gunakan network yang sudah ada
+networks:
+  # simrs-network:
+  #   driver: bridge
+  # Connect to the same network as service-general Redis
+  general-app-network:
+    external: true
+    name: service-general_default
+  # Shared network for cross-container communication
+  # shared-simrs-network:
+  #   external: true
+  #   name: shared-simrs-network
+
+services:
+  app-prod:
+    container_name: service-satusehat-prod
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - ./.env
+    environment:
+      - REDIS_HOST=shared-redis # Redis hostname di dalam network
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+    ports:
+      - "8196:8196"
+      - "8197:8197"
+    volumes:
+      - /app/tmp
+    # depends_on:
+    #   - redis  # Redis is managed separately
+    networks:
+      - general-app-network
+      # - shared-simrs-network
+    restart: unless-stopped

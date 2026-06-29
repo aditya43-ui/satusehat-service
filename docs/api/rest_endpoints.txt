@@ -1,0 +1,39 @@
+# REST API Endpoints - Person Service
+# Generated on: $(date)
+# Handler: internal/infrastructure/transport/http/handlers/person_handler.go
+
+## Base Path: /api/v1/persons
+
+### 1. Get List of Persons (Pagination)
+- **Method**: GET
+- **Path**: /persons
+- **Query Parameters**:
+  - page (int, optional): Page number (default: 1)
+  - limit (int, optional): Items per page (default: 10)
+- **Response**: Paginated list of persons
+- **Handler**: PersonHandler.GetList()
+
+### 2. Get Person Detail
+- **Method**: GET
+- **Path**: /persons/{id}
+- **Path Parameters**:
+  - id (int64, required): Person ID
+- **Response**: Single person details
+- **Handler**: PersonHandler.GetDetail()
+
+### 3. Create New Person
+- **Method**: POST
+- **Path**: /persons
+- **Request Body**: CreatePersonRequest JSON
+- **Response**: Created person details
+- **Handler**: PersonHandler.Create()
+
+### 4. Update Person
+- **Method**: PUT
+- **Path**: /persons/{id}
+- **Path Parameters**:
+  - id (int64, required): Person ID
+- **Request Body**: CreatePersonRequest JSON
+- **Response**: Updated person details
+- **Handler**: PersonHandler.Update()
+

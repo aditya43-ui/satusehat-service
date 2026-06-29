@@ -1,0 +1,106 @@
+# This file contains default configuration.
+# Environment-specific values and secrets should be provided
+# via environment variables (e.g., through a .env file).
+# The application will map ENV_VARS to config keys.
+# Example: 'databases.postgres.host' is overridden by 'DATABASES_POSTGRES_HOST'.
+
+server:
+  # Overridden by SERVER_PORT, defaults to 8080 if not set
+  port: 8080
+  # Overridden by GIN_MODE, can be 'debug' or 'release'
+  mode: debug
+  read_timeout: 10
+  write_timeout: 10
+
+# Configuration for database connections
+databases:
+  postgres:
+    type: postgres
+    # Overridden by DATABASES_POSTGRES_HOST
+    host: 10.10.123.206
+    # Overridden by DATABASES_POSTGRES_PORT
+    port: 5432
+    # Overridden by DATABASES_POSTGRES_USERNAME
+    username: postgres
+    # Overridden by DATABASES_POSTGRES_PASSWORD
+    password: rss@j@y@2025 # MUST be loaded from ENV
+    # Overridden by DATABASES_POSTGRES_DATABASE
+    database: health
+    sslmode: disable
+    max_open_conns: 25
+    max_idle_conns: 25
+    conn_max_lifetime: 5m
+
+# Authentication configuration
+auth:
+  # Overridden by AUTH_TYPE: 'jwt', 'keycloak', 'static', 'hybrid'
+  type: jwt
+  # Overridden by AUTH_STATIC_TOKENS: comma-separated list of tokens
+  static_tokens: []
+  # Overridden by AUTH_FALLBACK_TO: 'keycloak' or 'static'
+  fallback_to: ""
+
+# Keycloak specific configuration
+keycloak:
+  # Overridden by KEYCLOAK_ISSUER
+  issuer: ""
+  # Overridden by KEYCLOAK_AUDIENCE
+  audience: ""
+  # Overridden by KEYCLOAK_JWKS_URL
+  jwks_url: ""
+  # Overridden by KEYCLOAK_ENABLED
+  enabled: false
+
+# SatuSehat specific configuration
+satu_sehat:
+  # Overridden by SATU_SEHAT_ORG_ID
+  org_id: 100026555
+  # Overridden by SATU_SEHAT_FASYAKES_ID
+  fasyakes_id: 3573011
+  # Overridden by SATU_SEHAT_CLIENT_ID
+  client_id: l1ZgJGW6K5pnrqGUikWM7fgIoquA2AQ5UUG0U8WqHaq2VEyZ
+  # Overridden by SATU_SEHAT_CLIENT_SECRET
+  client_secret: Al3PTYAW6axPiAFwaFlpn8qShLFW5YGMgG8w1qhexgCc7lGTEjjcR6zxa06ThPDy # MUST be loaded from ENV
+  # Overridden by SATU_SEHAT_AUTH_URL
+  auth_url: https://api-satusehat.kemkes.go.id/oauth2/v1
+  # Overridden by SATU_SEHAT_BASE_URL
+  base_url: https://api-satusehat.kemkes.go.id/fhir-r4/v1
+  # Overridden by SATU_SEHAT_CONSENT_URL
+  consent_url: https://api-satusehat.dto.kemkes.go.id/consent/v1
+  # Overridden by SATU_SEHAT_KFA_URL
+  kfa_url: https://api-satusehat.kemkes.go.id/kfa-v2
+  timeout: 30s
+
+# Swagger documentation configuration
+swagger:
+  title: SERVICE API
+  description: CUSTUM SERVICE API
+  version: 1.0.0
+  terms_of_service: http://swagger.io/terms/
+  contact_name: API Support
+  contact_url: http://rssa.example.com/support
+  contact_email: support@swagger.io
+  license_name: Apache 2.0
+  license_url: http://www.apache.org/licenses/LICENSE-2.0.html
+  # Overridden by SWAGGER_HOST
+  host: localhost:8080
+  # Overridden by SWAGGER_BASE_PATH
+  base_path: /api/v1
+  schemes: http,https
+
+# Security related configuration
+security:
+  # Overridden by SECURITY_TRUSTED_ORIGINS: comma-separated list of URLs
+  trusted_origins: http://localhost:3000,http://localhost:8080
+  max_input_length: 500
+  rate_limit:
+    # Overridden by SECURITY_RATE_LIMIT_REQUESTS_PER_MINUTE
+    requests_per_minute: 60
+    redis:
+      # Overridden by SECURITY_RATE_LIMIT_REDIS_HOST
+      host: redis # Use service name for Docker
+      # Overridden by SECURITY_RATE_LIMIT_REDIS_PORT
+      port: 6379
+      # Overridden by REDIS_PASSWORD
+      password: "" # MUST be loaded from ENV
+      db: 0

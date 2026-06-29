@@ -1,0 +1,1866 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "REST API for Service General including Multi-DB, BPJS, and SatuSehat integrations.",
+        "title": "GoPrint Service General API",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "name": "API Support",
+            "email": "support@example.com"
+        },
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        },
+        "version": "1.0.0"
+    },
+    "basePath": "/api/v1",
+    "paths": {
+        "/auth/info": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve information about the currently active token/user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Get Token Info",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/login": {
+            "post": {
+                "description": "Authenticate user and return JWT \u0026 Refresh tokens",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Login user",
+                "parameters": [
+                    {
+                        "description": "Login credentials",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service_internal_auth.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Logout current user and blacklist the token",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Logout user",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/refresh": {
+            "post": {
+                "description": "Refresh expired access token using refresh token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Refresh Token",
+                "parameters": [
+                    {
+                        "description": "Refresh token payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service_internal_auth.RefreshTokenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/register": {
+            "post": {
+                "description": "Register a new user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Register user",
+                "parameters": [
+                    {
+                        "description": "Registration details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service_internal_auth.RegisterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/roles/master": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve a paginated list of RoleMaster",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Get list of Role",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Number of items per page",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset for pagination",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort fields (e.g. +name,-created_at)",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by active status",
+                        "name": "active",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new RoleMaster record",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Create new RoleMaster",
+                "parameters": [
+                    {
+                        "description": "Payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service_internal_master_role_master.RoleMasterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/roles/master/search": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Search RoleMaster records using dynamic filters",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Search Role",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Limit per page",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset for pagination",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort fields (e.g. +name,-created_at)",
+                        "name": "sort",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/roles/master/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve detailed information about a specific RoleMaster",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Get RoleMaster detail",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "RoleMaster ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update details of an existing RoleMaster record by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Update an existing RoleMaster",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "RoleMaster ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service_internal_master_role_master.RoleMasterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a RoleMaster record by ID (soft delete)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Delete a RoleMaster",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "RoleMaster ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/roles/pages": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve a paginated list of Role Pages",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles-pages"
+                ],
+                "summary": "Get list of Role Pages",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Number of items per page",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset for pagination",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort fields (e.g. +name,-created_at)",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by active status",
+                        "name": "active",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new Role Pages record",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles-pages"
+                ],
+                "summary": "Create new Role Pages",
+                "parameters": [
+                    {
+                        "description": "Payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service_internal_master_role_pages.RolPagesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/roles/pages/search": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Search Role Pages records using dynamic filters",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles-pages"
+                ],
+                "summary": "Search Role Pages",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Limit per page",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset for pagination",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort fields",
+                        "name": "sort",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/roles/pages/tree": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve a hierarchical tree of Role Pages",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles-pages"
+                ],
+                "summary": "Get tree of Role Pages",
+                "parameters": [
+                    {
+                        "type": "boolean",
+                        "description": "Filter by active status",
+                        "name": "active",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/roles/pages/tree/level/{level}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve a hierarchical tree of Role Pages up to a specific level",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles-pages"
+                ],
+                "summary": "Get tree of Role Pages by level",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Hierarchy Level",
+                        "name": "level",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by active status",
+                        "name": "active",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/roles/pages/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve detailed information about a specific Role Pages",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles-pages"
+                ],
+                "summary": "Get Role Pages detail",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Role Pages ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update details of an existing Role Pages record by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles-pages"
+                ],
+                "summary": "Update an existing Role Pages",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Role Pages ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service_internal_master_role_pages.RolPagesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a Role Pages record by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles-pages"
+                ],
+                "summary": "Delete a Role Pages",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Role Pages ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/roles/permissions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve a paginated list of Role Permissions",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles-permissions"
+                ],
+                "summary": "Get list of Role Permissions",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Number of items per page",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset for pagination",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort fields (e.g. +name,-created_at)",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by active status",
+                        "name": "active",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new Role Permission record",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles-permissions"
+                ],
+                "summary": "Create new Role Permission",
+                "parameters": [
+                    {
+                        "description": "Payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service_internal_master_role_permission.RolPermissionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/roles/permissions/role/{role}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve a permission tree by Keycloak role",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles-permissions"
+                ],
+                "summary": "Get Permission Tree by Role",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Role Keycloak",
+                        "name": "role",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by active status",
+                        "name": "active",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/roles/permissions/search": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Search Role Permissions records using dynamic filters",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles-permissions"
+                ],
+                "summary": "Search Role Permissions",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Limit per page",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset for pagination",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort fields",
+                        "name": "sort",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/roles/permissions/tree/{role}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve a permission tree",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles-permissions"
+                ],
+                "summary": "Get Permission Tree",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Role Keycloak",
+                        "name": "role",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated groups",
+                        "name": "groups",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by active status",
+                        "name": "active",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/roles/permissions/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve detailed information about a specific Role Permission",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles-permissions"
+                ],
+                "summary": "Get Role Permission detail",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Role Permission ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update details of an existing Role Permission record by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles-permissions"
+                ],
+                "summary": "Update an existing Role Permission",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Role Permission ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service_internal_master_role_permission.RolPermissionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a Role Permission record by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles-permissions"
+                ],
+                "summary": "Delete a Role Permission",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Role Permission ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/satusehat/reference/auth/token": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Mendapatkan token aktif untuk API Satu Sehat Kemenkes (menggunakan cache internal)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Satu Sehat - Auth"
+                ],
+                "summary": "Get SatuSehat Access Token",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/satusehat/reference/auth/token/refresh": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Memaksa request token baru dari API Satu Sehat Kemenkes (bypass cache)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Satu Sehat - Auth"
+                ],
+                "summary": "Refresh SatuSehat Access Token",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/satusehat/reference/kfa/products": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Mengambil daftar produk KFA dengan kapabilitas paginasi",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Satu Sehat - KFA"
+                ],
+                "summary": "Daftar Produk KFA",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Nomor Halaman (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Jumlah Data (default: 10)",
+                        "name": "size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Tipe Produk (farmasi/alkes)",
+                        "name": "product_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Kata Kunci Pencarian",
+                        "name": "keyword",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Parameter waktu (from_)",
+                        "name": "from_",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/satusehat/reference/kfa/products/{code}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Mencari detail produk farmasi/alkes dari API Kamus Farmasi dan Alat Kesehatan (KFA) Satu Sehat",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Satu Sehat - KFA"
+                ],
+                "summary": "Cari Produk KFA berdasarkan Kode",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Kode KFA (contoh: 93000469)",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/satusehat/reference/location": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Mencari data Location berdasarkan parameter",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Satu Sehat - Location"
+                ],
+                "summary": "Pencarian Lokasi (Satu Sehat)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Nama Lokasi",
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID Organisasi Pemilik",
+                        "name": "organization",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Identifier Lokasi",
+                        "name": "identifier",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/satusehat/reference/location/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Mencari data Location FHIR Satu Sehat berdasarkan ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Satu Sehat - Location"
+                ],
+                "summary": "Cari Lokasi (Satu Sehat) berdasarkan ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Location ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/satusehat/reference/organization": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Mencari data Organization berdasarkan Name atau PartOf",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Satu Sehat - Organization"
+                ],
+                "summary": "Pencarian Organisasi (Satu Sehat)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Nama Organisasi",
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID Organisasi Induk",
+                        "name": "partof",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Identifier Organisasi",
+                        "name": "identifier",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/satusehat/reference/organization/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Mencari data Organization FHIR Satu Sehat berdasarkan ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Satu Sehat - Organization"
+                ],
+                "summary": "Cari Organisasi (Satu Sehat) berdasarkan ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Organization ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/satusehat/reference/patient": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Mencari data pasien FHIR Satu Sehat berdasarkan kombinasi parameter (Nama, NIK, NIK Ibu, Tanggal Lahir, Gender)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Satu Sehat - Patient"
+                ],
+                "summary": "Pencarian Pasien (Satu Sehat) Multi-Parameter",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Nomor Induk Kependudukan",
+                        "name": "nik",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Nomor Induk Kependudukan Ibu (Untuk bayi)",
+                        "name": "nik_ibu",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Nama Pasien",
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Tanggal Lahir (YYYY-MM-DD)",
+                        "name": "birthdate",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Jenis Kelamin (male/female)",
+                        "name": "gender",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Mendaftarkan data pasien baru ke API Satu Sehat dan mengembalikan IHS Number",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Satu Sehat - Patient"
+                ],
+                "summary": "Daftar Pasien Baru (Satu Sehat)",
+                "parameters": [
+                    {
+                        "description": "Data Pasien Baru",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service_internal_satusehat_reference_patient.CreatePatientRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/satusehat/reference/patient/nik/{nik}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Mencari data pasien FHIR Satu Sehat berdasarkan Nomor Induk Kependudukan (NIK)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Satu Sehat - Patient"
+                ],
+                "summary": "Cari Pasien (Satu Sehat) berdasarkan NIK",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Nomor Induk Kependudukan",
+                        "name": "nik",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/satusehat/reference/patient/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Mencari data pasien FHIR Satu Sehat berdasarkan IHS Number / ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Satu Sehat - Patient"
+                ],
+                "summary": "Cari Pasien (Satu Sehat) berdasarkan ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "IHS Number / Patient ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/satusehat/reference/practitioner": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Mencari data Practitioner FHIR Satu Sehat berdasarkan parameter",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Satu Sehat - Practitioner"
+                ],
+                "summary": "Pencarian Tenaga Medis (Satu Sehat) Multi-Parameter",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Nomor Induk Kependudukan",
+                        "name": "nik",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Nama Tenaga Medis",
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Jenis Kelamin (male/female)",
+                        "name": "gender",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Tanggal Lahir (YYYY-MM-DD)",
+                        "name": "birthdate",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/satusehat/reference/practitioner/nik/{nik}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Mencari data Practitioner FHIR Satu Sehat berdasarkan NIK",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Satu Sehat - Practitioner"
+                ],
+                "summary": "Cari Tenaga Medis (Satu Sehat) berdasarkan NIK",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Nomor Induk Kependudukan",
+                        "name": "nik",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/satusehat/reference/practitioner/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Mencari data Practitioner FHIR Satu Sehat berdasarkan IHS Number / ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Satu Sehat - Practitioner"
+                ],
+                "summary": "Cari Tenaga Medis (Satu Sehat) berdasarkan ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "IHS Number / Practitioner ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "response.Response": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "error": {},
+                "message": {
+                    "type": "string"
+                },
+                "meta": {},
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "service_internal_auth.LoginRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "service_internal_auth.RefreshTokenRequest": {
+            "type": "object",
+            "required": [
+                "provider",
+                "refresh_token"
+            ],
+            "properties": {
+                "provider": {
+                    "description": "Provider membantu membedakan antara \"jwt\" dan \"keycloak\".\nIni membuat endpoint menjadi fleksibel.",
+                    "type": "string",
+                    "enum": [
+                        "jwt",
+                        "keycloak"
+                    ]
+                },
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "service_internal_auth.RegisterRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "name",
+                "password",
+                "role_id"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 6
+                },
+                "role_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "service_internal_master_role_master.RoleMasterRequest": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "select": {},
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "service_internal_master_role_pages.RolPagesRequest": {
+            "type": "object",
+            "required": [
+                "level",
+                "name",
+                "sort",
+                "url"
+            ],
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "icon": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "level": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 20
+                },
+                "parent": {
+                    "type": "integer"
+                },
+                "sort": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "service_internal_master_role_permission.RolPermissionRequest": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "create": {
+                    "type": "boolean"
+                },
+                "delete": {
+                    "type": "boolean"
+                },
+                "disable": {
+                    "type": "boolean"
+                },
+                "fk_rol_pages_id": {
+                    "type": "integer"
+                },
+                "group_keycloak": {
+                    "type": "string"
+                },
+                "read": {
+                    "type": "boolean"
+                },
+                "role_keycloak": {
+                    "type": "string"
+                },
+                "update": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "service_internal_satusehat_reference_patient.CreatePatientRequest": {
+            "type": "object",
+            "required": [
+                "birth_date",
+                "gender",
+                "name",
+                "nik"
+            ],
+            "properties": {
+                "address": {
+                    "description": "Opsional",
+                    "type": "string"
+                },
+                "birth_date": {
+                    "description": "Format: YYYY-MM-DD",
+                    "type": "string"
+                },
+                "gender": {
+                    "description": "male, female, other, unknown",
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nik": {
+                    "type": "string"
+                },
+                "phone": {
+                    "description": "Opsional",
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "Type \"Bearer\" followed by a space and JWT token.",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}

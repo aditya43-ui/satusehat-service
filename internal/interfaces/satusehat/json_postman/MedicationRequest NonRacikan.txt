@@ -1,0 +1,219 @@
+{
+    "authoredOn": "2023-11-13T03:50:00+00:00",
+    "category": [
+        {
+            "coding": [
+                {
+                    "code": "community",
+                    "display": "Community",
+                    "system": "http://terminology.hl7.org/CodeSystem/medicationrequest-category"
+                }
+            ]
+        }
+    ],
+    "contained": [
+        {
+            "code": {
+                "coding": [
+                    {
+                        "code": "93006334",
+                        "display": "Paracetamol 500 mg Tablet (INDOFARMA)",
+                        "system": "http://sys-ids.kemkes.go.id/kfa"
+                    }
+                ]
+            },
+            "extension": [
+                {
+                    "url": "https://fhir.kemkes.go.id/r4/StructureDefinition/MedicationType",
+                    "valueCodeableConcept": {
+                        "coding": [
+                            {
+                                "code": "NC",
+                                "display": "Non-compound",
+                                "system": "http://terminology.kemkes.go.id/CodeSystem/medication-type"
+                            }
+                        ]
+                    }
+                }
+            ],
+            "form": {
+                "coding": [
+                    {
+                        "code": "BS066",
+                        "display": "Tablet",
+                        "system": "http://terminology.kemkes.go.id/CodeSystem/medication-form"
+                    }
+                ]
+            },
+            "id": "2024120387418-001",
+            "identifier": [
+                {
+                    "system": "http://sys-ids.kemkes.go.id/medication/10000005",
+                    "use": "official",
+                    "value": "PCT001"
+                }
+            ],
+            "ingredient": [
+                {
+                    "isActive": true,
+                    "itemCodeableConcept": {
+                        "coding": [
+                            {
+                                "code": "91000101",
+                                "display": "Paracetamol",
+                                "system": "http://sys-ids.kemkes.go.id/kfa"
+                            }
+                        ]
+                    },
+                    "strength": {
+                        "denominator": {
+                            "code": "TAB",
+                            "system": "http://terminology.hl7.org/CodeSystem/v3-orderableDrugForm",
+                            "unit": "Tablet",
+                            "value": 1
+                        },
+                        "numerator": {
+                            "code": "mg",
+                            "system": "http://unitsofmeasure.org",
+                            "value": 500
+                        }
+                    }
+                }
+            ],
+            "manufacturer": {
+                "reference": "Organization/10000004"
+            },
+            "meta": {
+                "profile": [
+                    "https://fhir.kemkes.go.id/r4/StructureDefinition/Medication"
+                ]
+            },
+            "resourceType": "Medication",
+            "status": "active"
+        }
+    ],
+    "dispenseRequest": {
+        "dispenseInterval": {
+            "code": "d",
+            "system": "http://unitsofmeasure.org",
+            "unit": "days",
+            "value": 1
+        },
+        "expectedSupplyDuration": {
+            "code": "d",
+            "system": "http://unitsofmeasure.org",
+            "unit": "days",
+            "value": 5
+        },
+        "numberOfRepeatsAllowed": 1,
+        "performer": {
+            "reference": "Organization/10000005"
+        },
+        "quantity": {
+            "code": "TAB",
+            "system": "http://terminology.hl7.org/CodeSystem/v3-orderableDrugForm",
+            "unit": "TAB",
+            "value": 10
+        },
+        "validityPeriod": {
+            "end": "2023-11-15T04:01:00+00:00",
+            "start": "2023-11-15T04:01:00+00:00"
+        }
+    },
+    "dosageInstruction": [
+        {
+            "additionalInstruction": [
+                {
+                    "coding": [
+                        {
+                            "code": "418850000",
+                            "display": "Contains aspirin and paracetamol. Do not take with any other paracetamol products",
+                            "system": "http://snomed.info/sct"
+                        }
+                    ]
+                }
+            ],
+            "doseAndRate": [
+                {
+                    "doseQuantity": {
+                        "code": "TAB",
+                        "system": "http://terminology.hl7.org/CodeSystem/v3-orderableDrugForm",
+                        "unit": "TAB",
+                        "value": 1
+                    },
+                    "type": {
+                        "coding": [
+                            {
+                                "code": "ordered",
+                                "display": "Ordered",
+                                "system": "http://terminology.hl7.org/CodeSystem/dose-rate-type"
+                            }
+                        ]
+                    }
+                }
+            ],
+            "patientInstruction": "Diminum 3x sehari jika Demam, jangan diminum bersamaan dengan produk paracetamol lainnya",
+            "route": {
+                "coding": [
+                    {
+                        "code": "O",
+                        "display": "Oral",
+                        "system": "http://www.whocc.no/atc"
+                    }
+                ]
+            },
+            "sequence": 1,
+            "timing": {
+                "repeat": {
+                    "frequency": 1,
+                    "period": 8,
+                    "periodUnit": "h",
+                    "when": [
+                        "PC"
+                    ]
+                }
+            }
+        }
+    ],
+    "encounter": {
+        "reference": "Encounter/2cf6e058-51d2-4cb2-a353-de9d3b032931"
+    },
+    "id": "1140eac3-84b2-40f0-8735-69b80b8091c0",
+    "identifier": [
+        {
+            "system": "http://sys-ids.kemkes.go.id/prescription/10000005",
+            "use": "official",
+            "value": "A00000111222"
+        },
+        {
+            "system": "http://sys-ids.kemkes.go.id/prescription-item/10000005",
+            "use": "official",
+            "value": "A00000111222-1"
+        }
+    ],
+    "intent": "order",
+    "medicationReference": {
+        "reference": "#2024120387418-001"
+    },
+    "meta": {
+        "lastUpdated": "2024-12-03T08:44:29.797707+00:00",
+        "versionId": "MTczMzIxNTQ2OTc5NzcwNzAwMA"
+    },
+    "priority": "routine",
+    "reasonReference": [
+        {
+            "display": "Demam",
+            "reference": "Condition/ae473b50-cad7-4e4b-8714-aee6ea9b0fa5"
+        }
+    ],
+    "requester": {
+        "display": "dr. Alexander",
+        "reference": "Practitioner/10009880728"
+    },
+    "resourceType": "MedicationRequest",
+    "status": "completed",
+    "subject": {
+        "display": "Ghina Assyifa",
+        "reference": "Patient/P01654557057"
+    }
+}

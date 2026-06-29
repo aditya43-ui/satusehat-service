@@ -1,0 +1,94 @@
+{
+    "info": {
+        "name": "Person Service API",
+        "description": "REST API Collection for Person Service",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Get Person List",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/api/v1/persons?page=1&limit=10",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "v1", "persons"],
+                    "query": [
+                        {
+                            "key": "page",
+                            "value": "1",
+                            "description": "Page number"
+                        },
+                        {
+                            "key": "limit",
+                            "value": "10",
+                            "description": "Items per page"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "name": "Get Person Detail",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/api/v1/persons/1",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "v1", "persons", "1"]
+                }
+            }
+        },
+        {
+            "name": "Create Person",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"name\": \"John Doe\",\n    \"email\": \"john.doe@example.com\",\n    \"phone\": \"+1234567890\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/v1/persons",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "v1", "persons"]
+                }
+            }
+        },
+        {
+            "name": "Update Person",
+            "request": {
+                "method": "PUT",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"name\": \"John Doe Updated\",\n    \"email\": \"john.updated@example.com\",\n    \"phone\": \"+0987654321\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/v1/persons/1",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "v1", "persons", "1"]
+                }
+            }
+        }
+    ],
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:8080",
+            "type": "string"
+        }
+    ]
+}

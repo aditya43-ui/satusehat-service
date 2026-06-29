@@ -1,0 +1,520 @@
+---
+title: "service-satusehat — Technical Analysis"
+subtitle: "Architecture, modules, gaps, and risks"
+author: "Backend Engineering"
+date: "2026-05-13"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    code-fold: false
+    theme: cosmo
+    embed-resources: true
+  pdf:
+    toc: true
+    number-sections: true
+    colorlinks: true
+execute:
+  echo: true
+  eval: false
+---
+
+# Executive Summary
+
+`service-satusehat` is a production-track Go microservice that implements an
+**integration gateway** between a hospital information system (SIMRS) and the
+Indonesian SATUSEHAT FHIR R4 platform, with secondary integration paths to
+BPJS, Keycloak, MinIO, and Redis.
+
+The codebase is built on **Clean Architecture + Domain-Driven Design + CQRS**,
+serves both **REST (Gin)** and **gRPC** transports, and supports five
+relational/NoSQL databases. As of 2026-05-13:
+
+- **19 FHIR resources** are wired end-to-end (Create / Update / Patch / Get / Search).
+- **7 reference registries** are proxied (Patient, Practitioner, Organization,
+  Location, KFA, KYC, Auth).
+- The error system, logger, query builder, and Prometheus metrics layer are
+  mature and reusable.
+- **Critical gaps**: virtually zero test coverage, empty gRPC implementation,
+  no audit-log table, no CI.
+
+This document presents the technical analysis in depth; the companion files
+`PRD.md`, `DEVPLAN.md`, and `DEVLOG.md` cover product framing, forward plan,
+and ongoing change record respectively.
+
+---
+
+# Repository Layout
+
+```{.text}
+service-satusehat/
+├── cmd/
+│   ├── api/main.go              # primary entry point (REST + gRPC)
+│   ├── seeder/main.go           # data seeder
+│   └── monitoring/main.go       # standalone monitoring entry
+├── internal/
+│   ├── auth/                    # authentication module (CQRS)
+│   ├── master/role/             # RBAC master: master, pages, permission, accses
+│   ├── infrastructure/
+│   │   ├── cache/               # Redis + NoOp cache
+│   │   ├── config/              # YAML + env loader
+│   │   ├── container/           # DI container
+│   │   ├── database/            # multi-DB manager + migrations
+│   │   ├── monitoring/          # health, metrics, middleware
+│   │   └── transport/           # http (Gin) + grpc
+│   ├── interfaces/
+│   │   ├── bpjs/                # BPJS client (HMAC-signed)
+│   │   ├── minio/               # object storage
+│   │   └── satusehat/           # SATUSEHAT FHIR client + token cache
+│   └── satusehat/
+│       ├── common/              # shared mappers / DTOs
+│       ├── reference/           # patient, practitioner, organization,
+│       │                        # location, kfa, kyc, auth
+│       └── usecase/             # 19 FHIR resource modules
+│           └── <resource>/
+│               ├── dto.go
+│               ├── mapper.go
+│               ├── repository.go
+│               └── service.go
+├── pkg/
+│   ├── crypto/                  # RSA helpers
+│   ├── errors/                  # AppError, codes, builder, i18n, grpc/http mapping
+│   ├── logger/                  # logrus-based structured logger
+│   ├── response/                # standard HTTP envelopes
+│   └── utils/
+│       ├── custom/              # time helpers (WIB)
+│       ├── query/               # multi-dialect SQL + Mongo query builder
+│       └── validator/           # validator-v10 translator
+├── docs/                        # this folder
+├── tools/                       # generator + generator config
+├── scripts/                     # build / proto / migrate / seed shell scripts
+├── Dockerfile / Dockerfile.dev
+├── docker-compose.{dev,prod,monitoring,redis,network}.yml
+├── Makefile
+└── config.yaml
+```
+
+---
+
+# Architecture
+
+## Layering
+
+```{.mermaid}
+flowchart TB
+  T["Transport Layer<br/>REST (Gin)  •  gRPC"]
+  A["Application Layer<br/>auth • role • SATUSEHAT usecases"]
+  D["Domain Layer<br/>CQRS: Command + Query repositories"]
+  I["Infrastructure Layer<br/>DB • Cache • SATUSEHAT client • BPJS • MinIO • Logger • Metrics"]
+  T --> A --> D --> I
+```
+
+- **Transport** is thin: parse HTTP/gRPC, validate input, call service.
+- **Application** orchestrates use-cases; one usecase per FHIR resource.
+- **Domain** is the CQRS boundary — every repository is split into
+  `CommandRepository` (write) and `QueryRepository` (read).
+- **Infrastructure** owns I/O concerns and exposes interfaces upward.
+
+## CQRS in practice
+
+Every domain module wires **two repository implementations** at boot:
+
+```{.go}
+authCmdRepo   := auth.NewCommandRepository(primaryDB, logger)
+authQueryRepo := auth.NewQueryRepository(primaryDB, logger)
+authService   := auth.NewService(authCmdRepo, authQueryRepo, cacheManager, cfg)
+```
+
+This is wired uniformly for `auth`, `role/master`, `role/pages`,
+`role/permission`. The pattern lets reads route to read replicas while writes
+target the primary — see `database.GetReadDB()` for the round-robin selector.
+
+## SATUSEHAT integration flow
+
+```{.mermaid}
+sequenceDiagram
+  participant Caller
+  participant Service as service-satusehat
+  participant Client as internal/interfaces/satusehat.Client
+  participant SS as SATUSEHAT FHIR
+
+  Caller->>Service: POST /api/v1/encounter
+  Service->>Service: validate DTO
+  Service->>Service: MapRequestToFHIR(req)
+  Service->>Client: DoRequest(ctx, POST, "/Encounter", payload)
+  Client->>Client: GetAccessToken() — cached if valid
+  alt token expired or missing
+    Client->>SS: POST /oauth2/v1/accesstoken
+    SS-->>Client: access_token (≈1h)
+  end
+  Client->>SS: POST /Encounter (Bearer ...)
+  SS-->>Client: FHIR response
+  Client-->>Service: FHIRResponse{ResourceID, Outcome}
+  Service-->>Caller: 200 OK with mapped envelope
+```
+
+Key properties:
+
+- **Token caching** is in-memory, mutex-protected, and uses a 1-minute safety
+  buffer before expiry (`internal/interfaces/satusehat/client.go`).
+- **Auth URL normalisation** auto-appends `/accesstoken` + query parameters
+  if the configured URL is missing them.
+- Auxiliary paths (`DoKFA`, `DoKYC`, `DoConsent`) inject the right scoped
+  headers transparently.
+
+---
+
+# Module Inventory
+
+## SATUSEHAT FHIR Usecases
+
+All 19 modules follow the same four-file template:
+
+| File          | Responsibility |
+|---------------|----------------|
+| `dto.go`      | Request, Update, Patch DTOs with validator-v10 tags |
+| `mapper.go`   | `MapRequestToFHIR(req) → FHIRPayload` |
+| `repository.go` | Thin wrapper over `SatuSehatClient.DoRequest` |
+| `service.go`  | Validation + orchestration + Mapper + Repository |
+
+| # | Resource              | Status | Notes |
+|---|-----------------------|--------|-------|
+| 1 | AllergyIntolerance    | ✓ CRUDS | |
+| 2 | CarePlan              | ✓ CRUDS | |
+| 3 | ClinicalImpression    | ✓ CRUDS | |
+| 4 | Composition           | ✓ CRUDS | |
+| 5 | Condition             | ✓ CRUDS | |
+| 6 | DiagnosticReport      | ✓ CRUDS | |
+| 7 | Encounter             | ✓ CRUDS | most complex mapper |
+| 8 | EpisodeOfCare         | ✓ CRUDS | **active refactor** — see DEVLOG 2026-05-13 |
+| 9 | ImagingStudy          | ✓ CRUDS | linked with Studies |
+| 10 | Immunization         | ✓ CRUDS | |
+| 11 | Medication           | ✓ CRUDS | |
+| 12 | MedicationDispense   | ✓ CRUDS | |
+| 13 | MedicationRequest    | ✓ CRUDS | |
+| 14 | MedicationStatement  | ✓ CRUDS | |
+| 15 | Observation          | ✓ CRUDS | vitals + lab |
+| 16 | Procedure            | ✓ CRUDS | |
+| 17 | QuestionnaireResponse | ✓ CRUDS | |
+| 18 | ServiceRequest       | ✓ CRUDS | |
+| 19 | Specimen             | ✓ CRUDS | |
+|   | Studies (DICOM)       | minimal | repo only, no full service |
+
+> Legend: **CRUDS** = Create, Update, Patch, Get-by-ID, Search.
+
+## SATUSEHAT Reference Modules
+
+| Module        | Purpose |
+|---------------|---------|
+| `patient`     | Search by NIK / name / DOB |
+| `practitioner`| Search by NIK or NPP |
+| `organization`| Facility registry |
+| `location`    | Room / bed registry |
+| `kfa`         | Drug & device master |
+| `kyc`         | Identity verification (TODO: persist result locally) |
+| `auth`        | Token introspection / refresh |
+
+## Application Modules
+
+| Module                   | Files | Notes |
+|--------------------------|-------|-------|
+| `internal/auth`          | 4     | JWT + Keycloak + static + hybrid auth |
+| `internal/master/role/master` | 5 | Role CRUD |
+| `internal/master/role/pages` | 5 | Page/menu master |
+| `internal/master/role/permission` | 5 | Role↔Page↔Action mappings |
+| `internal/master/role/accses` | 5 | Access list (folder typo) |
+
+## Infrastructure
+
+| Component        | Maturity | Notes |
+|------------------|----------|-------|
+| `database`       | High     | 5 DB types, read replicas, pool tuning, migrations, LISTEN/NOTIFY |
+| `cache`          | Medium   | Redis + NoOp factory; NoOp is not goroutine-safe |
+| `config`         | High     | Full env + YAML + validate |
+| `monitoring`     | High     | Prometheus + health + repo wrapper |
+| `transport/http` | High     | Gin + handlers + middleware + Swagger |
+| `transport/grpc` | **Low**  | proto/ empty, registry empty, reflection only |
+| `container`      | Medium   | Hand-rolled DI |
+
+## Cross-cutting (`pkg/`)
+
+| Package          | LOC (approx) | Notes |
+|------------------|--------------|-------|
+| `errors`         | ~2000        | AppError, codes, http+grpc mapping, i18n, recovery, metrics |
+| `logger`         | ~400         | logrus-backed, daily-file output, context aware |
+| `utils/query`    | ~3500        | SQL + Mongo + dialects + filters + injection guard |
+| `utils/validator`| ~150         | go-playground/validator translator |
+| `response`       | ~100         | Standard `{success, data, error, meta}` envelope |
+
+---
+
+# Configuration
+
+## Sources and precedence
+
+1. **Environment variables** (highest precedence).
+2. **`config.yaml`** in working directory.
+3. **Defaults baked into `config.Config`**.
+
+Loading happens at startup via `config.LoadConfig()` and is followed by
+`cfg.Validate()` which fails fast on missing required fields per auth /
+SATUSEHAT type.
+
+## Key configuration sections
+
+| Section       | Notable keys |
+|---------------|--------------|
+| `server.rest` | port, mode, read/write timeout |
+| `server.grpc` | port, reflection_enabled |
+| `databases.*` | type, host, credentials, pool, replicas, SSL |
+| `auth`        | type=jwt/static/keycloak/hybrid, keycloak.*, jwt.secret |
+| `bpjs`        | base_url, cons_id, secret_key, user_keys.* |
+| `satusehat`   | org_id, fasyankes_id, client_id, secret, auth_url, base_url, kfa_url, kyc_url, dicom_url |
+| `cache`       | enabled, redis.*, ttl.default/session/rate_limit |
+| `minio`       | endpoint, access/secret, ssl, buckets |
+| `security`    | trusted_origins, max_input_length, rate_limit.requests_per_minute |
+| `logger`      | level, format, output |
+
+## Secrets handling
+
+- All secrets sourced from environment (no plaintext in `config.yaml`).
+- BPJS HMAC signing isolated in `internal/interfaces/bpjs/crypto.go`.
+- KYC RSA key pair encoded as base64 env (`pkg/crypto/rsa.go`).
+- Logger does **not** dump credentials at startup.
+
+---
+
+# Data Layer
+
+## Supported databases
+
+| Engine     | Driver(s)                | Purpose                |
+|------------|--------------------------|------------------------|
+| PostgreSQL | `pgx/v5`, `pq`, GORM     | Primary, recommended   |
+| MySQL      | GORM mysql               | Alternate primary      |
+| SQL Server | GORM sqlserver           | Legacy SIMRS sources   |
+| SQLite     | GORM sqlite              | Local dev / tests      |
+| MongoDB    | `mongo-go-driver`        | Optional document store|
+
+## Features
+
+- **Singleton `dbManager`** behind `once.Do` for one-time initialisation.
+- **Pool tuning** driven by `runtime.NumCPU()` if not configured:
+  `maxOpen = cores*2 + 1`, `maxIdle = maxOpen/2`.
+- **Read replicas** with round-robin via `GetReadDB(name)`.
+- **Migrations**: SQL files in `internal/infrastructure/database/sql/`
+  plus GORM AutoMigrate; tracked in a `Migrations` table.
+- **LISTEN/NOTIFY** support for Postgres (`ListenForChanges`,
+  `NotifyChange`).
+- **Health** per-database with pool stats in `Health()`.
+
+## Query builder (`pkg/utils/query`)
+
+A custom builder that supports:
+
+- **Dialects**: PostgreSQL, MySQL, SQL Server, SQLite (syntax differences
+  centralised in `dialects.go`).
+- **Operators**: `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `like`,
+  `between`, full-text, date range.
+- **Logical composition**: `AND`, `OR`, nested groups.
+- **Pagination**: offset + limit.
+- **Sorting**: multi-field ASC/DESC.
+- **Mongo**: aggregation pipeline emission.
+- **Injection guard**: regex blacklist + parameterised binding
+  (`sql_security.go`).
+
+> ⚠ Multiple `fmt.Printf` debug calls remain in `sql_builder.go` and
+> `mongo_execution.go`. These should be replaced with `logger.Debug()`
+> before production rollout (DEVPLAN M1).
+
+---
+
+# Transport
+
+## REST (Gin)
+
+- Entry: `internal/infrastructure/transport/http/servers`.
+- Handlers grouped by domain under `handlers/main/` and `handlers/satusehat/`.
+- Middleware stack: CORS → recovery → request-id → auth → rate-limit (TBD).
+- Routes registered via `RegisterRoutes(router, registry)` where `registry`
+  is the `ServiceRegistry` struct populated in `cmd/api/main.go`.
+- Swagger: `swaggo/gin-swagger`, served at `/swagger/index.html`.
+
+## gRPC
+
+- Server bootstraps in `cmd/api/main.go` with optional reflection.
+- `proto/v1/` directory **exists but contains no `.proto` files**.
+- No services are currently registered with the gRPC server — clients
+  receive `Unimplemented`. See DEVPLAN M3 for the gRPC catch-up plan.
+
+---
+
+# Authentication & Authorization
+
+## Inbound
+
+| Mode      | Description |
+|-----------|-------------|
+| `jwt`     | Service signs and validates its own JWTs |
+| `static`  | Bearer-token list from env `AUTH_STATIC_TOKENS` |
+| `keycloak`| Validate against Keycloak JWKS, audience checked |
+| `hybrid`  | Try Keycloak; fallback to static/JWT |
+
+Service exposes:
+
+- `Login(username, password) → access + refresh`
+- `RefreshToken(refresh) → access + refresh`
+- `ValidateToken(token) → claims`
+- `Logout(token) → ok`  ← **does not yet persist revocation** (TODO at
+  `internal/auth/service.go:233`)
+- `GenerateJWT`, `VerifyJWT` for the local-only path.
+
+## Outbound (SATUSEHAT)
+
+- OAuth2 client-credentials, single concurrent `GetAccessToken()`,
+  mutex-protected.
+- 1-minute pre-expiry refresh to avoid token race.
+- Auxiliary services (`KFA`, `KYC`, `Consent`) reuse the same token where
+  scopes allow.
+
+---
+
+# Observability
+
+| Surface      | Detail |
+|--------------|--------|
+| **Logging**  | `logrus`, JSON or text; daily file rotation under `logs/YYYY/MM/`. Fields: service, env, request_id (TBD), latency, status, error_code |
+| **Metrics**  | Prometheus client; HTTP req count/latency, DB pool stats, cache hit ratio, error count by code |
+| **Health**   | `GET /api/v1/health`, `/health/database`, `/health/external` |
+| **Tracing**  | Not yet — only request-id propagation planned |
+
+---
+
+# Build, Packaging, Deployment
+
+## Build
+
+- Go 1.25, modules.
+- Multi-stage Dockerfile: `golang:1.25-alpine` → `gcr.io/distroless/static:nonroot`.
+- CGO disabled, static binary, runs as `nonroot`.
+- Exposes `8196` (REST) and `8197` (gRPC, when wired).
+
+## Compose stacks
+
+| File                          | Purpose |
+|-------------------------------|---------|
+| `docker-compose.dev.yml`      | Hot-reload dev with `Dockerfile.dev` + air |
+| `docker-compose.prod.yml`     | Production single instance, joins external network `service-general_default` |
+| `docker-compose.monitoring.yml` | Prometheus / Grafana side-car |
+| `docker-compose.redis.yml`    | Stand-alone Redis |
+| `docker-compose.network.yml`  | Creates shared external network |
+
+## Make targets
+
+`dev`, `prod`, `logs`, `clean`, `security-check` (gosec), `audit`
+(govulncheck), `test`, `test-coverage`, `proto`, `proto-all`, `seeder-*`.
+
+---
+
+# Security Review (quick pass)
+
+| Control                | State |
+|------------------------|-------|
+| Parameterised queries  | ✓ enforced by GORM + sqlx + builder |
+| SQL injection regex guard | ✓ in `pkg/utils/query/sql_security.go` |
+| CORS                   | ✓ configurable `trusted_origins` |
+| Rate limit             | ⚠ config exists, middleware missing |
+| Secrets in env only    | ✓ |
+| TLS for outbound       | ✓ via Go default; configurable for DB |
+| Token revocation       | ⚠ logout not persisted |
+| Audit log of writes    | ⚠ no dedicated table |
+| Dependency scan        | ✓ `make audit` (govulncheck) |
+| SAST                   | ✓ `make security-check` (gosec) |
+
+---
+
+# Testing
+
+| Path                                  | Tests |
+|---------------------------------------|-------|
+| `pkg/utils/query/dialects_test.go`    | ✓ |
+| `pkg/utils/query/sql_builder_test.go` | ✓ |
+| **Everything else**                   | ✗ |
+
+> Test coverage is the single highest risk in the codebase. DEVPLAN M1
+> prioritises mapper unit tests for every FHIR resource (cheap, high value).
+
+---
+
+# Gaps, Risks, and Recommendations
+
+| ID  | Gap                                                                | Severity | Recommendation |
+|-----|--------------------------------------------------------------------|----------|----------------|
+| R1  | gRPC empty                                                         | High     | Author proto, generate, register at least the 4 most-used resources |
+| R2  | Near-zero tests                                                    | High     | Mapper unit tests first; integration tests behind build tag |
+| R3  | No rate-limit middleware                                           | Medium   | Add Redis-backed token-bucket middleware; key by user/IP |
+| R4  | Logout does not revoke                                             | Medium   | Persist revoked refresh tokens; check on every refresh |
+| R5  | KYC result not persisted                                           | Medium   | Add `kyc_verification` table; write on success |
+| R6  | Cache invalidation TODOs in role services                          | Medium   | Standardise cache keys + invalidate on every Cmd write |
+| R7  | `fmt.Printf` debug leaks                                           | Low      | Replace with `logger.Debug()` |
+| R8  | NoOp cache not thread-safe                                         | Medium   | Add `sync.RWMutex` or refuse fallback in production |
+| R9  | Folder name `accses` typo                                          | Low      | Rename module after one cycle of approved PRs |
+| R10 | No SATUSEHAT submission audit table                                | High     | Add `satusehat_submission` table + repository wrapper logging |
+| R11 | No CI                                                              | High     | GitHub Actions: lint → test → build → docker → push |
+| R12 | Commented-out Kafka producer + ImagingStudy worker in `main.go`    | Low      | Either delete or move behind feature flags |
+| R13 | Empty `tools/generate.go`                                          | Low      | Either remove or finish the code-gen story |
+
+---
+
+# Open Questions
+
+1. **Audit retention** — how long must SATUSEHAT submission logs be kept?
+   (Permenkes 24/2022 mandates ≥ 25 years for medical records — does the
+   integration log count?)
+2. **Idempotency** — do callers retry safely? Should the service de-duplicate
+   by `(resource, identifier, hash)` before re-submission?
+3. **Multi-tenant** — is one deployment per hospital, or shared across
+   hospitals with `org_id` partitioning?
+4. **DR** — Redis is shared external; does the hospital DC have a failover?
+
+---
+
+# Appendix A — Active Refactor: `EpisodeOfCare`
+
+The most recently touched module. Diff summary (uncommitted as of
+2026-05-13):
+
+- `mapper.go` — removed `os.Getenv("SATUSEHAT_ORG_ID")` fallback; now relies
+  purely on `req.OrganizationID`. Mapping becomes pure / deterministic.
+- `repository.go` — removed `hiddenCtx` wrapper; calls
+  `client.DoRequest(ctx, …)` directly.
+- `service.go` — constructor now takes `orgID string`; injects into
+  `req.OrganizationID` when caller leaves it blank. Both `Create` and
+  `Update` honour the default.
+
+Why it matters:
+
+- **Testability**: pure mappers without env reads are trivial to unit-test.
+- **Multi-tenant readiness**: each service instance can hold its own org
+  identity, paving the way for one binary serving multiple facilities.
+- **Pattern**: this refactor should be replicated across the other 18 FHIR
+  modules (DEVPLAN M1 task T-04).
+
+---
+
+# Appendix B — Conventions for New FHIR Modules
+
+When adding a new FHIR resource:
+
+1. **Create folder** `internal/satusehat/usecase/<resource>/`.
+2. **Define DTOs** in `dto.go` with `validator` tags.
+3. **Write mapper** in `mapper.go`: pure function `Map…ToFHIR(req)` returning
+   `satusehat.FHIRPayload`. **No env reads, no I/O.**
+4. **Repository** in `repository.go`: only thin `executeRequest` wrappers for
+   POST / PUT / PATCH / GET / GET search.
+5. **Service** in `service.go`: validate, inject defaults (e.g. `orgID`),
+   call mapper, call repository.
+6. **Wire in `cmd/api/main.go`** under the appropriate factory block.
+7. **Add Swagger** comment block above the handler.
+8. **Add unit tests** for the mapper at minimum.

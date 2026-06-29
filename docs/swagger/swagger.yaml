@@ -1,0 +1,1196 @@
+basePath: /api/v1
+definitions:
+  response.Response:
+    properties:
+      data: {}
+      error: {}
+      message:
+        type: string
+      meta: {}
+      status:
+        type: string
+    type: object
+  service_internal_auth.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  service_internal_auth.RefreshTokenRequest:
+    properties:
+      provider:
+        description: |-
+          Provider membantu membedakan antara "jwt" dan "keycloak".
+          Ini membuat endpoint menjadi fleksibel.
+        enum:
+        - jwt
+        - keycloak
+        type: string
+      refresh_token:
+        type: string
+    required:
+    - provider
+    - refresh_token
+    type: object
+  service_internal_auth.RegisterRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        minLength: 6
+        type: string
+      role_id:
+        type: integer
+    required:
+    - email
+    - name
+    - password
+    - role_id
+    type: object
+  service_internal_master_role_master.RoleMasterRequest:
+    properties:
+      active:
+        type: boolean
+      created_at:
+        type: string
+      name:
+        type: string
+      select: {}
+      updated_at:
+        type: string
+    type: object
+  service_internal_master_role_pages.RolPagesRequest:
+    properties:
+      active:
+        type: boolean
+      icon:
+        maxLength: 100
+        type: string
+      level:
+        minimum: 0
+        type: integer
+      name:
+        maxLength: 20
+        type: string
+      parent:
+        type: integer
+      sort:
+        minimum: 0
+        type: integer
+      url:
+        type: string
+    required:
+    - level
+    - name
+    - sort
+    - url
+    type: object
+  service_internal_master_role_permission.RolPermissionRequest:
+    properties:
+      active:
+        type: boolean
+      create:
+        type: boolean
+      delete:
+        type: boolean
+      disable:
+        type: boolean
+      fk_rol_pages_id:
+        type: integer
+      group_keycloak:
+        type: string
+      read:
+        type: boolean
+      role_keycloak:
+        type: string
+      update:
+        type: boolean
+    type: object
+  service_internal_satusehat_reference_patient.CreatePatientRequest:
+    properties:
+      address:
+        description: Opsional
+        type: string
+      birth_date:
+        description: 'Format: YYYY-MM-DD'
+        type: string
+      gender:
+        description: male, female, other, unknown
+        type: string
+      name:
+        type: string
+      nik:
+        type: string
+      phone:
+        description: Opsional
+        type: string
+    required:
+    - birth_date
+    - gender
+    - name
+    - nik
+    type: object
+info:
+  contact:
+    email: support@example.com
+    name: API Support
+  description: REST API for Service General including Multi-DB, BPJS, and SatuSehat
+    integrations.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: GoPrint Service General API
+  version: 1.0.0
+paths:
+  /auth/info:
+    get:
+      description: Retrieve information about the currently active token/user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get Token Info
+      tags:
+      - auth
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user and return JWT & Refresh tokens
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/service_internal_auth.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Login user
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      description: Logout current user and blacklist the token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Logout user
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Refresh expired access token using refresh token
+      parameters:
+      - description: Refresh token payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/service_internal_auth.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Refresh Token
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a new user
+      parameters:
+      - description: Registration details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/service_internal_auth.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Register user
+      tags:
+      - auth
+  /roles/master:
+    get:
+      description: Retrieve a paginated list of RoleMaster
+      parameters:
+      - default: 10
+        description: Number of items per page
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset for pagination
+        in: query
+        name: offset
+        type: integer
+      - description: Sort fields (e.g. +name,-created_at)
+        in: query
+        name: sort
+        type: string
+      - description: Filter by active status
+        in: query
+        name: active
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get list of Role
+      tags:
+      - roles
+    post:
+      consumes:
+      - application/json
+      description: Create a new RoleMaster record
+      parameters:
+      - description: Payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/service_internal_master_role_master.RoleMasterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Create new RoleMaster
+      tags:
+      - roles
+  /roles/master/{id}:
+    delete:
+      description: Delete a RoleMaster record by ID (soft delete)
+      parameters:
+      - description: RoleMaster ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Delete a RoleMaster
+      tags:
+      - roles
+    get:
+      description: Retrieve detailed information about a specific RoleMaster
+      parameters:
+      - description: RoleMaster ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get RoleMaster detail
+      tags:
+      - roles
+    put:
+      consumes:
+      - application/json
+      description: Update details of an existing RoleMaster record by ID
+      parameters:
+      - description: RoleMaster ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/service_internal_master_role_master.RoleMasterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update an existing RoleMaster
+      tags:
+      - roles
+  /roles/master/search:
+    get:
+      description: Search RoleMaster records using dynamic filters
+      parameters:
+      - default: 10
+        description: Limit per page
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset for pagination
+        in: query
+        name: offset
+        type: integer
+      - description: Sort fields (e.g. +name,-created_at)
+        in: query
+        name: sort
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Search Role
+      tags:
+      - roles
+  /roles/pages:
+    get:
+      description: Retrieve a paginated list of Role Pages
+      parameters:
+      - default: 10
+        description: Number of items per page
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset for pagination
+        in: query
+        name: offset
+        type: integer
+      - description: Sort fields (e.g. +name,-created_at)
+        in: query
+        name: sort
+        type: string
+      - description: Filter by active status
+        in: query
+        name: active
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get list of Role Pages
+      tags:
+      - roles-pages
+    post:
+      consumes:
+      - application/json
+      description: Create a new Role Pages record
+      parameters:
+      - description: Payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/service_internal_master_role_pages.RolPagesRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Create new Role Pages
+      tags:
+      - roles-pages
+  /roles/pages/{id}:
+    delete:
+      description: Delete a Role Pages record by ID
+      parameters:
+      - description: Role Pages ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Delete a Role Pages
+      tags:
+      - roles-pages
+    get:
+      description: Retrieve detailed information about a specific Role Pages
+      parameters:
+      - description: Role Pages ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get Role Pages detail
+      tags:
+      - roles-pages
+    put:
+      consumes:
+      - application/json
+      description: Update details of an existing Role Pages record by ID
+      parameters:
+      - description: Role Pages ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/service_internal_master_role_pages.RolPagesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update an existing Role Pages
+      tags:
+      - roles-pages
+  /roles/pages/search:
+    get:
+      description: Search Role Pages records using dynamic filters
+      parameters:
+      - default: 10
+        description: Limit per page
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset for pagination
+        in: query
+        name: offset
+        type: integer
+      - description: Sort fields
+        in: query
+        name: sort
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Search Role Pages
+      tags:
+      - roles-pages
+  /roles/pages/tree:
+    get:
+      description: Retrieve a hierarchical tree of Role Pages
+      parameters:
+      - description: Filter by active status
+        in: query
+        name: active
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get tree of Role Pages
+      tags:
+      - roles-pages
+  /roles/pages/tree/level/{level}:
+    get:
+      description: Retrieve a hierarchical tree of Role Pages up to a specific level
+      parameters:
+      - description: Hierarchy Level
+        in: path
+        name: level
+        required: true
+        type: integer
+      - description: Filter by active status
+        in: query
+        name: active
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get tree of Role Pages by level
+      tags:
+      - roles-pages
+  /roles/permissions:
+    get:
+      description: Retrieve a paginated list of Role Permissions
+      parameters:
+      - default: 10
+        description: Number of items per page
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset for pagination
+        in: query
+        name: offset
+        type: integer
+      - description: Sort fields (e.g. +name,-created_at)
+        in: query
+        name: sort
+        type: string
+      - description: Filter by active status
+        in: query
+        name: active
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get list of Role Permissions
+      tags:
+      - roles-permissions
+    post:
+      consumes:
+      - application/json
+      description: Create a new Role Permission record
+      parameters:
+      - description: Payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/service_internal_master_role_permission.RolPermissionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Create new Role Permission
+      tags:
+      - roles-permissions
+  /roles/permissions/{id}:
+    delete:
+      description: Delete a Role Permission record by ID
+      parameters:
+      - description: Role Permission ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Delete a Role Permission
+      tags:
+      - roles-permissions
+    get:
+      description: Retrieve detailed information about a specific Role Permission
+      parameters:
+      - description: Role Permission ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get Role Permission detail
+      tags:
+      - roles-permissions
+    put:
+      consumes:
+      - application/json
+      description: Update details of an existing Role Permission record by ID
+      parameters:
+      - description: Role Permission ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/service_internal_master_role_permission.RolPermissionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update an existing Role Permission
+      tags:
+      - roles-permissions
+  /roles/permissions/role/{role}:
+    get:
+      description: Retrieve a permission tree by Keycloak role
+      parameters:
+      - description: Role Keycloak
+        in: path
+        name: role
+        required: true
+        type: string
+      - description: Filter by active status
+        in: query
+        name: active
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get Permission Tree by Role
+      tags:
+      - roles-permissions
+  /roles/permissions/search:
+    get:
+      description: Search Role Permissions records using dynamic filters
+      parameters:
+      - default: 10
+        description: Limit per page
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset for pagination
+        in: query
+        name: offset
+        type: integer
+      - description: Sort fields
+        in: query
+        name: sort
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Search Role Permissions
+      tags:
+      - roles-permissions
+  /roles/permissions/tree/{role}:
+    get:
+      description: Retrieve a permission tree
+      parameters:
+      - description: Role Keycloak
+        in: path
+        name: role
+        required: true
+        type: string
+      - description: Comma-separated groups
+        in: query
+        name: groups
+        type: string
+      - description: Filter by active status
+        in: query
+        name: active
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get Permission Tree
+      tags:
+      - roles-permissions
+  /satusehat/reference/auth/token:
+    get:
+      description: Mendapatkan token aktif untuk API Satu Sehat Kemenkes (menggunakan
+        cache internal)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get SatuSehat Access Token
+      tags:
+      - Satu Sehat - Auth
+  /satusehat/reference/auth/token/refresh:
+    post:
+      description: Memaksa request token baru dari API Satu Sehat Kemenkes (bypass
+        cache)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Refresh SatuSehat Access Token
+      tags:
+      - Satu Sehat - Auth
+  /satusehat/reference/kfa/products:
+    get:
+      description: Mengambil daftar produk KFA dengan kapabilitas paginasi
+      parameters:
+      - description: 'Nomor Halaman (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Jumlah Data (default: 10)'
+        in: query
+        name: size
+        type: integer
+      - description: Tipe Produk (farmasi/alkes)
+        in: query
+        name: product_type
+        type: string
+      - description: Kata Kunci Pencarian
+        in: query
+        name: keyword
+        type: string
+      - description: Parameter waktu (from_)
+        in: query
+        name: from_
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Daftar Produk KFA
+      tags:
+      - Satu Sehat - KFA
+  /satusehat/reference/kfa/products/{code}:
+    get:
+      description: Mencari detail produk farmasi/alkes dari API Kamus Farmasi dan
+        Alat Kesehatan (KFA) Satu Sehat
+      parameters:
+      - description: 'Kode KFA (contoh: 93000469)'
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Cari Produk KFA berdasarkan Kode
+      tags:
+      - Satu Sehat - KFA
+  /satusehat/reference/location:
+    get:
+      description: Mencari data Location berdasarkan parameter
+      parameters:
+      - description: Nama Lokasi
+        in: query
+        name: name
+        type: string
+      - description: ID Organisasi Pemilik
+        in: query
+        name: organization
+        type: string
+      - description: Identifier Lokasi
+        in: query
+        name: identifier
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Pencarian Lokasi (Satu Sehat)
+      tags:
+      - Satu Sehat - Location
+  /satusehat/reference/location/{id}:
+    get:
+      description: Mencari data Location FHIR Satu Sehat berdasarkan ID
+      parameters:
+      - description: Location ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Cari Lokasi (Satu Sehat) berdasarkan ID
+      tags:
+      - Satu Sehat - Location
+  /satusehat/reference/organization:
+    get:
+      description: Mencari data Organization berdasarkan Name atau PartOf
+      parameters:
+      - description: Nama Organisasi
+        in: query
+        name: name
+        type: string
+      - description: ID Organisasi Induk
+        in: query
+        name: partof
+        type: string
+      - description: Identifier Organisasi
+        in: query
+        name: identifier
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Pencarian Organisasi (Satu Sehat)
+      tags:
+      - Satu Sehat - Organization
+  /satusehat/reference/organization/{id}:
+    get:
+      description: Mencari data Organization FHIR Satu Sehat berdasarkan ID
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Cari Organisasi (Satu Sehat) berdasarkan ID
+      tags:
+      - Satu Sehat - Organization
+  /satusehat/reference/patient:
+    get:
+      description: Mencari data pasien FHIR Satu Sehat berdasarkan kombinasi parameter
+        (Nama, NIK, NIK Ibu, Tanggal Lahir, Gender)
+      parameters:
+      - description: Nomor Induk Kependudukan
+        in: query
+        name: nik
+        type: string
+      - description: Nomor Induk Kependudukan Ibu (Untuk bayi)
+        in: query
+        name: nik_ibu
+        type: string
+      - description: Nama Pasien
+        in: query
+        name: name
+        type: string
+      - description: Tanggal Lahir (YYYY-MM-DD)
+        in: query
+        name: birthdate
+        type: string
+      - description: Jenis Kelamin (male/female)
+        in: query
+        name: gender
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Pencarian Pasien (Satu Sehat) Multi-Parameter
+      tags:
+      - Satu Sehat - Patient
+    post:
+      consumes:
+      - application/json
+      description: Mendaftarkan data pasien baru ke API Satu Sehat dan mengembalikan
+        IHS Number
+      parameters:
+      - description: Data Pasien Baru
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/service_internal_satusehat_reference_patient.CreatePatientRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Daftar Pasien Baru (Satu Sehat)
+      tags:
+      - Satu Sehat - Patient
+  /satusehat/reference/patient/{id}:
+    get:
+      description: Mencari data pasien FHIR Satu Sehat berdasarkan IHS Number / ID
+      parameters:
+      - description: IHS Number / Patient ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Cari Pasien (Satu Sehat) berdasarkan ID
+      tags:
+      - Satu Sehat - Patient
+  /satusehat/reference/patient/nik/{nik}:
+    get:
+      description: Mencari data pasien FHIR Satu Sehat berdasarkan Nomor Induk Kependudukan
+        (NIK)
+      parameters:
+      - description: Nomor Induk Kependudukan
+        in: path
+        name: nik
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Cari Pasien (Satu Sehat) berdasarkan NIK
+      tags:
+      - Satu Sehat - Patient
+  /satusehat/reference/practitioner:
+    get:
+      description: Mencari data Practitioner FHIR Satu Sehat berdasarkan parameter
+      parameters:
+      - description: Nomor Induk Kependudukan
+        in: query
+        name: nik
+        type: string
+      - description: Nama Tenaga Medis
+        in: query
+        name: name
+        type: string
+      - description: Jenis Kelamin (male/female)
+        in: query
+        name: gender
+        type: string
+      - description: Tanggal Lahir (YYYY-MM-DD)
+        in: query
+        name: birthdate
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Pencarian Tenaga Medis (Satu Sehat) Multi-Parameter
+      tags:
+      - Satu Sehat - Practitioner
+  /satusehat/reference/practitioner/{id}:
+    get:
+      description: Mencari data Practitioner FHIR Satu Sehat berdasarkan IHS Number
+        / ID
+      parameters:
+      - description: IHS Number / Practitioner ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Cari Tenaga Medis (Satu Sehat) berdasarkan ID
+      tags:
+      - Satu Sehat - Practitioner
+  /satusehat/reference/practitioner/nik/{nik}:
+    get:
+      description: Mencari data Practitioner FHIR Satu Sehat berdasarkan NIK
+      parameters:
+      - description: Nomor Induk Kependudukan
+        in: path
+        name: nik
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Cari Tenaga Medis (Satu Sehat) berdasarkan NIK
+      tags:
+      - Satu Sehat - Practitioner
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

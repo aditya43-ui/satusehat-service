@@ -1,0 +1,10 @@
+version: "3.8"
+
+networks:
+  app-network:
+    driver: bridge
+    name: general-app-network
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
