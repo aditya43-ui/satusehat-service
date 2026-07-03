@@ -49,6 +49,9 @@ type ModuleHandlers struct {
 	SSMedicationStatement   *satuSehatUsecaseHttp.MedicationStatementHandler
 	SSObservation           *satuSehatUsecaseHttp.ObservationHandler
 	SSProcedure             *satuSehatUsecaseHttp.ProcedureHandler
+	SSClaim                 *satuSehatUsecaseHttp.ClaimHandler
+	SSClaimResponse         *satuSehatUsecaseHttp.ClaimResponseHandler
+	SSPurificationDecision  *satuSehatUsecaseHttp.PurificationDecisionHandler
 	SSQuestionnaireResponse *satuSehatUsecaseHttp.QuestionnaireResponseHandler
 	SSServiceRequest        *satuSehatUsecaseHttp.ServiceRequestHandler
 	SSSpecimen              *satuSehatUsecaseHttp.SpecimenHandler
@@ -220,6 +223,15 @@ func SetupRoutes(
 				}
 				if h.SSProcedure != nil {
 					h.SSProcedure.RegisterRoutes(satuSehatGroup)
+				}
+				if h.SSClaim != nil {
+					h.SSClaim.RegisterRoutes(satuSehatGroup)
+				}
+				if h.SSClaimResponse != nil {
+					h.SSClaimResponse.RegisterRoutes(satuSehatGroup)
+				}
+				if h.SSPurificationDecision != nil {
+					h.SSPurificationDecision.RegisterRoutes(satuSehatGroup)
 				}
 				if h.SSQuestionnaireResponse != nil {
 					h.SSQuestionnaireResponse.RegisterRoutes(satuSehatGroup)

@@ -37,7 +37,10 @@ import (
 	"service/internal/satusehat/usecase/medicationdispense"
 	"service/internal/satusehat/usecase/medicationrequest"
 	"service/internal/satusehat/usecase/medicationstatement"
+	satuSehatClaim "service/internal/satusehat/usecase/claim"
+	satuSehatClaimResponse "service/internal/satusehat/usecase/claimresponse"
 	"service/internal/satusehat/usecase/observation"
+	satuSehatPurificationDecision "service/internal/satusehat/usecase/purificationdecision"
 	satuSehatProcedure "service/internal/satusehat/usecase/procedure"
 	"service/internal/satusehat/usecase/questionnaireresponse"
 	"service/internal/satusehat/usecase/servicerequest"
@@ -203,6 +206,15 @@ func main() {
 	satuSehatProcedureRepo := satuSehatProcedure.NewRepository(satusehatClient)
 	satuSehatProcedureSvc := satuSehatProcedure.NewService(satuSehatProcedureRepo, cfg.SatuSehat.OrgID)
 
+	satuSehatClaimRepo := satuSehatClaim.NewRepository(satusehatClient)
+	satuSehatClaimSvc := satuSehatClaim.NewService(satuSehatClaimRepo, cfg.SatuSehat.OrgID)
+
+	satuSehatClaimResponseRepo := satuSehatClaimResponse.NewRepository(satusehatClient)
+	satuSehatClaimResponseSvc := satuSehatClaimResponse.NewService(satuSehatClaimResponseRepo, cfg.SatuSehat.OrgID)
+
+	satuSehatPurificationDecisionRepo := satuSehatPurificationDecision.NewRepository(satusehatClient)
+	satuSehatPurificationDecisionSvc := satuSehatPurificationDecision.NewService(satuSehatPurificationDecisionRepo, cfg.SatuSehat.OrgID)
+
 	satuSehatKycRepo := satuSehatKyc.NewRepository(satusehatClient)
 	satuSehatKycSvc := satuSehatKyc.NewService(satuSehatKycRepo, cfg.SatuSehat)
 
@@ -327,6 +339,9 @@ func main() {
 				KYC:                   satuSehatKycSvc,
 				Encounter:             satuSehatEncounterSvc,
 				Procedure:             satuSehatProcedureSvc,
+				Claim:                 satuSehatClaimSvc,
+				ClaimResponse:         satuSehatClaimResponseSvc,
+				PurificationDecision:  satuSehatPurificationDecisionSvc,
 				Condition:             satuSehatConditionSvc,
 				AllergyIntolerance:    satuSehatAllergyIntoleranceSvc,
 				CarePlan:              satuSehatCarePlanSvc,

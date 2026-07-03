@@ -11,6 +11,24 @@
 
 ---
 
+## 2026-07-01 — meninjar — `feat` · scope: `usecase/claimresponse` + `usecase/purificationdecision`
+
+Lengkapi delegasi SATUSEHAT untuk modul E-Klaim IDRG:
+- **`usecase/claimresponse/`** → FHIR `ClaimResponse` (`/satusehat/claim-response` POST/GET/PUT/Search). subType `purifikasi|verifikasi` (terminology.kemkes.go.id), `request`→Claim, `adjudication` passthrough.
+- **`usecase/purificationdecision/`** → FHIR `PurificationDecision` (`/satusehat/purification-decision` POST/GET/Search). status Lanjut/Batal (mis. TK000049), `claimResponse` ref.
+
+Pola sama `procedure`/`claim` (dto/mapper/service/repository + handler + wiring 5 titik). **Verifikasi**: `go vet ./cmd/api/...` exit 0. Delegasi SATUSEHAT untuk idrg kini: Claim + ClaimResponse + PurificationDecision. Pendukung (Coverage/Account/ChargeItem/Invoice) opsional (passthrough).
+
+## 2026-07-01 — meninjar — `feat` · scope: `usecase/claim`
+
+**Konteks**: Modul E-Klaim IDRG (service-idrg) mendelegasikan FHIR Claim/ClaimResponse ke SATUSEHAT via service ini. Kontrak diverifikasi dari `docs/26. Use Case - Modul Klaim (BPJS).postman_collection.json` (POST `/Claim`, `/ClaimResponse`, + pendukung `/Coverage` `/Account` `/ChargeItem` `/Invoice` `/PurificationDecision`).
+
+**Ditambah**: usecase **`internal/satusehat/usecase/claim/`** (dto/mapper/service/repository, pola sama `procedure`) → FHIR `Claim` R4 (type=institutional, use=claim, diagnosis ICD-10 / procedure ICD-9-CM passthrough, insurance→Coverage + No.SEP, total IDR). Handler `claim_handler.go` (`/satusehat/claim` POST/GET/PUT/Search) + wiring 5 titik (registry/routes/server/main).
+
+**Verifikasi**: `go vet ./cmd/api/...` exit 0 (compile penuh). Container belum dijalankan.
+
+**Berikutnya**: usecase `ClaimResponse` (Purifikasi/Verifikasi) + `PurificationDecision`; opsional `Coverage/Account/ChargeItem/Invoice` bila idrg belum menyuplai lengkap.
+
 ## 2026-06-20 — meninjar — `chore` · scope: `config` / `env`
 
 **Summary.** Membersihkan seluruh file env + `config.yaml` agar service hanya

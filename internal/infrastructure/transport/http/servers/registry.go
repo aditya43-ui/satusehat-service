@@ -32,7 +32,10 @@ import (
 	"service/internal/satusehat/usecase/medicationdispense"
 	"service/internal/satusehat/usecase/medicationrequest"
 	"service/internal/satusehat/usecase/medicationstatement"
+	"service/internal/satusehat/usecase/claim"
+	"service/internal/satusehat/usecase/claimresponse"
 	"service/internal/satusehat/usecase/observation"
+	"service/internal/satusehat/usecase/purificationdecision"
 	"service/internal/satusehat/usecase/procedure"
 	"service/internal/satusehat/usecase/questionnaireresponse"
 	"service/internal/satusehat/usecase/servicerequest"
@@ -74,6 +77,9 @@ type SatuSehatServices struct {
 	MedicationStatement   medicationstatement.Service
 	Observation           observation.Service
 	Procedure             procedure.Service
+	Claim                 claim.Service
+	ClaimResponse         claimresponse.Service
+	PurificationDecision  purificationdecision.Service
 	QuestionnaireResponse questionnaireresponse.Service
 	ServiceRequest        servicerequest.Service
 	Specimen              specimen.Service

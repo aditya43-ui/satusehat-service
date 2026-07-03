@@ -157,6 +157,15 @@ func NewHTTPServer(
 		if registry.SatuSehat.Procedure != nil {
 			appHandlers.SSProcedure = satuSehatUsecaseHttp.NewProcedureHandler(registry.SatuSehat.Procedure)
 		}
+		if registry.SatuSehat.Claim != nil {
+			appHandlers.SSClaim = satuSehatUsecaseHttp.NewClaimHandler(registry.SatuSehat.Claim)
+		}
+		if registry.SatuSehat.ClaimResponse != nil {
+			appHandlers.SSClaimResponse = satuSehatUsecaseHttp.NewClaimResponseHandler(registry.SatuSehat.ClaimResponse)
+		}
+		if registry.SatuSehat.PurificationDecision != nil {
+			appHandlers.SSPurificationDecision = satuSehatUsecaseHttp.NewPurificationDecisionHandler(registry.SatuSehat.PurificationDecision)
+		}
 		if registry.SatuSehat.QuestionnaireResponse != nil {
 			appHandlers.SSQuestionnaireResponse = satuSehatUsecaseHttp.NewQuestionnaireResponseHandler(registry.SatuSehat.QuestionnaireResponse)
 		}
