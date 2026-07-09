@@ -54,6 +54,14 @@ A single integration service that solves the above once, and is reusable across 
 
 ---
 
+
+### 1.1 Panduan Eksekusi AI (Agentic Workflow)
+Bagi Agen AI yang bertugas mengimplementasikan spesifikasi dalam dokumen ini, **WAJIB** menerapkan siklus berikut (berdasarkan 24 *Agent Skills*):
+1. **`spec-driven-development`**: Jangan mulai menulis kode sebelum membuat/memperbarui file spesifikasi teknis (terutama arsitektur dan API contract) di folder `docs/specs/`. Spesifikasi harus eksplisit terkait skema DB, struktur *request/response* (DTO), CQRS, dan edge-cases.
+2. **`planning-and-task-breakdown`**: Pecah implementasi fitur menjadi tugas-tugas kecil yang terukur di dalam file `task.md`. Implementasi WAJIB mengikuti urutan Clean Architecture: `Entity/DTO -> Mapper -> Repository -> Service -> Transport (Handler)`.
+3. **`doubt-driven-development`**: Jika spesifikasi terasa ambigu atau kontrak payload (terutama integrasi BPJS/SATUSEHAT) tidak jelas, jangan berasumsi. Tanyakan kepada user untuk menghindari kerugian operasional.
+4. **`security-and-hardening` & `observability-and-instrumentation`**: Pastikan seluruh input tervalidasi dengan aman, dan setiap proses mutasi data mencatat `request_id` melalui `logger.WithContext(ctx)` guna keperluan pelacakan audit.
+
 ## 2. Target Users & Personas
 
 ### 2.1 Primary Users (callers)

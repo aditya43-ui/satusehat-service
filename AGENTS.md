@@ -15,6 +15,16 @@
 
 ---
 
+
+## 🧠 Penggunaan Agent Skills (WAJIB)
+
+Sebagai agen AI, Anda dilengkapi dengan 24 *Agent Skills* (termasuk `securecoder` dan `agent-skills`). Anda **WAJIB** menerapkannya:
+1. **Inisiasi**: Mulai sesi dengan skill `context-engineering` dan selalu jadikan `SKILL.md` serta `SKILL_WORKSPACE.md` sebagai sumber kebenaran.
+2. **Klarifikasi**: Gunakan `interview-me` jika ada requirement yang ambigu (jangan berasumsi).
+3. **Eksekusi**: Terapkan `api-and-interface-design` (untuk kontrak REST/gRPC), `test-driven-development`, `observability-and-instrumentation`, dan `security-and-hardening` saat mengeksekusi kode.
+4. **Validasi Ketergantungan**: WAJIB menggunakan `scan_dependencies` jika ingin menambah library baru.
+5. **Navigasi Meta**: Gunakan meta-skill `using-agent-skills` sebagai rujukan kapan harus memakai skill lainnya.
+
 ## 📚 Bacaan Wajib Sebelum Bekerja (urutan)
 
 1. [`SKILL_WORKSPACE.md`](file:///home/meninjar/project%20nuxt/medical/SKILL_WORKSPACE.md) — **pedoman orkestrasi lintas-repo** (peta port backend/frontend, database bersama, dll). **Sangat penting.**
